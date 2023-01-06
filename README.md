@@ -15,7 +15,8 @@ cd scripts
 - biotype.sh expects three arguments: genome build [hg19/hg38], type of input [symbol/entrez], and path to input file
 - the input file (mygenes.txt) is expected to contain one gene symbol / entrez id per line
 
-Run biotype.sh like this:
+Example for running biotype.sh:
 ```
+printf '%s\n' 'MAPT' 'APOE' 'DRD2' > mygenes.txt
 ./biotype.sh hg19 symbol mygenes.txt
 ```
