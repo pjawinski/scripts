@@ -3,11 +3,11 @@
 # ======================================================================================================================
 # === provide hgnc symbol or entrez id and get gene synonyms, gene biotype, gene description, hgnc id, and entrez id ===
 # ======================================================================================================================
-# January 5, 2023 | philippe.jawinski@hu-berlin.de
+# January 6, 2023 | philippe.jawinski@hu-berlin.de
 
-# exit if no arguments are specified
+# check input arguments
 if [ -z "$3" ]; then
-    echo "Three arguments expected: genome build [hg19/hg39] + type of input [symbol/entrez] + path to input file"
+    echo "Three arguments expected: genome build [hg19/hg38] + type of input [symbol/entrez] + path to input file"
     exit 1
 fi
 if [ "$1" != "hg19" ] && [ "$1" != "hg38" ]; then
@@ -45,7 +45,7 @@ if [ ! -f "$refseq" ]; then
 	wget -q --show-progress -P $BASEDIR $weblink 
 
 	# get chromsome (translate), gene, biotype, description, synonyms from resources/GRCh37_latest_genomic.gff.gz
-	echo "  - translating ncbi chromosome id and extracting gene name, biotype, description, and synonyms"
+	echo "  - translating ncbi chromosome id and extracting gene name, gene biotype, gene description, and gene synonyms"
 	awk -F'\t' 'NR==FNR { chr[$1]=$2; next }
 		!($1 in chr) { next }
 		$9!~/Name/ || $9!~/biotype/ { next }
