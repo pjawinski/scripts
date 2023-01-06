@@ -24,9 +24,11 @@ build=$1 # genome build [hg19|hg38]
 input=$2 # type of input [symbol|entrez], 'symbol' for hgnc gene symbol; 'entrez' for entrez id
 genelist=$3 # file that contains list of genes, e.g., genelist="mygenes.txt"
 BASEDIR=$(dirname "$0")
+
+# set weblink and file handler according to genome build
 if [ "$build" == "hg19" ]; then
 	refseq="$BASEDIR/GCF_000001405.25_GRCh37.p13_genomic.edit.gff.gz"
-	weblink="https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/105.20220307/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.gff.gz" # https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/GRCh37_latest/refseq_identifiers/GRCh37_latest_genomic.gff.gz 
+	weblink="https://ftp.ncbi.nlm.nih.gov/refseq/H_sapiens/annotation/annotation_releases/105.20220307/GCF_000001405.25_GRCh37.p13/GCF_000001405.25_GRCh37.p13_genomic.gff.gz"
 	fileHandler="$BASEDIR/GCF_000001405.25_GRCh37.p13_genomic"
 	ncbiTranslate=$(echo NC_000001.10$'\t'1$'\n'NC_000002.11$'\t'2$'\n'NC_000003.11$'\t'3$'\n'NC_000004.11$'\t'4$'\n'NC_000005.9$'\t'5$'\n'NC_000006.11$'\t'6$'\n'NC_000007.13$'\t'7$'\n'NC_000008.10$'\t'8$'\n'NC_000009.11$'\t'9$'\n'NC_000010.10$'\t'10$'\n'NC_000011.9$'\t'11$'\n'NC_000012.11$'\t'12$'\n'NC_000013.10$'\t'13$'\n'NC_000014.8$'\t'14$'\n'NC_000015.9$'\t'15$'\n'NC_000016.9$'\t'16$'\n'NC_000017.10$'\t'17$'\n'NC_000018.9$'\t'18$'\n'NC_000019.9$'\t'19$'\n'NC_000020.10$'\t'20$'\n'NC_000021.8$'\t'21$'\n'NC_000022.10$'\t'22$'\n'NC_000023.10$'\t'X$'\n'NC_000024.9$'\t'Y$'\n'NC_012920.1$'\t'MT) # # see https://raw.githubusercontent.com/dpryan79/ChromosomeMappings/master/GRCh37_NCBI2UCSC.txt
 elif  [ "$build" == "hg38" ]; then
@@ -54,7 +56,8 @@ if [ ! -f "$refseq" ] || [ ! -s "$refseq" ]; then
 		{ description=$9; sub(/.*description=/,"",description); sub(/[;].*/,"",description) } $9!~/description/ { description="" }
 		{ synonym=$9; sub(/.*gene_synonym=/,"",synonym); sub(/[;].*/,"",synonym) } $9!~/synonym/ { synonym="" }
 		{ chrom=chr[$1] }
-		{ print $1, $2, $3, $4, $5, $6, $7, $8, $9, chrom, gene, biotype, description, synonym }' OFS='\t' <(echo "${ncbiTranslate}") <(gzip -dc ${fileHandler}.gff.gz) > ${fileHandler}.edit.gff
+		{ print $1, $2, $3, $4, $5, $6, $7, $8, $9, chrom, gene, biotype, description, synonym }
+		' OFS='\t' <(echo "${ncbiTranslate}") <(gzip -dc ${fileHandler}.gff.gz) > ${fileHandler}.edit.gff
 
 	# sort by name, start, and stop coordinate and remove duplicate genes
 	echo "  - sorting refseq entries by gene name, start, and stop coordinate and removing duplicates"
