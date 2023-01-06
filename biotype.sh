@@ -87,7 +87,7 @@ if [ "$input" = "symbol" ]; then
 
 	# no match? get refseq rows that contain id as synonym
 	missings=$(awk -F'\t' '$2 == "NA" { print $1}' "${genelist}.refseq.${build}.txt")
-	awk -F'\t' 'NR==FNR { missings[$1]; next }
+	awk -F'\t' -v header="$header" 'NR==FNR { missings[$1]; next }
 		{ synonyms=$14; if(length(synonyms)==0) { synonyms = "NA" };
 		  nSynonyms=split(synonyms,syns,","); for(k=1;k<=nSynonyms;++k) {
 			if(syns[k] !~ /^[0-9]+$/ && syns[k] in missings) { 
@@ -95,13 +95,16 @@ if [ "$input" = "symbol" ]; then
 		' OFS='\t' <(echo "$missings") <(gzip -dc $refseq) > "${genelist}.synonyms.refseq.${build}.txt"
 
 	# merge with annotation list
-	header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'END$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION
-	awk -F'\t' -v header="$header" 'BEGIN { print header }
-		NR==FNR { id[$1]=$1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8; next }
-		FNR==1 { next }
-		$1 in id { print id[$1]; next }
-		{ print $0}' OFS='\t' ${genelist}.synonyms.refseq.${build}.txt "${genelist}.refseq.${build}.txt" > "${genelist}.refseq.${build}.tmp.txt"
-	\mv "${genelist}.refseq.${build}.tmp.txt" "${genelist}.refseq.${build}.txt"
+	nFindings=$(awk 'END { print NR}' "${genelist}.synonyms.refseq.${build}.txt")
+	if [ "$nFindings" != 0 ]; then
+		header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'END$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION
+		awk -F'\t' -v header="$header" 'BEGIN { print header }
+			NR==FNR { id[$1]=$1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8; next }
+			FNR==1 { next }
+			$1 in id { print id[$1]; next }
+			{ print $0 }' OFS='\t' ${genelist}.synonyms.refseq.${build}.txt "${genelist}.refseq.${build}.txt" > "${genelist}.refseq.${build}.tmp.txt"
+		\mv "${genelist}.refseq.${build}.tmp.txt" "${genelist}.refseq.${build}.txt"
+	fi
 
 # if input = entrez
 elif [ "$input" = "entrez" ]; then
