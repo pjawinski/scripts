@@ -14,7 +14,7 @@ if [ "$1" != "hg19" ] && [ "$1" != "hg38" ]; then
 	echo "Please specify genome build as first argument [hg19/hg39]"
     exit 1
 fi
-if [ "$2" != "symbol" ] && [ "$1" != "entrez" ]; then
+if [ "$2" != "symbol" ] && [ "$2" != "entrez" ]; then
 	echo "Please specify the type of input as second argument [symbol/entrez]"
     exit 1
 fi
@@ -37,12 +37,12 @@ elif  [ "$build" == "hg38" ]; then
 fi
 	
 # test if refseq file exists
-if [ ! -f "$refseq" ]; then
-    echo $'\n'"Refseq file does not exist and will thus be downloaded from NCBI ftp server."
+if [ ! -f "$refseq" ] || [ ! -s "$refseq" ]; then
+    echo $'\n'"Refseq file does not exist or is empty and will thus be downloaded from NCBI ftp server."
 
 	# download refseq variants in .ggf format
 	echo "  - downloading RefSeq file in GFF3 format."
-	wget -q --show-progress -P $BASEDIR $weblink 
+	curl $weblink -s --output "${fileHandler}.gff.gz" 
 
 	# get chromsome (translate), gene, biotype, description, synonyms from resources/GRCh37_latest_genomic.gff.gz
 	echo "  - translating ncbi chromosome id and extracting gene name, gene biotype, gene description, and gene synonyms"
@@ -70,12 +70,15 @@ fi
 # remove ^M character and "GeneID:" (for entrez ids)
 genelistVar=$(cat -v "$genelist" | sed -e "s/\^M//g" | sed -e "s/GeneID://g")
 
+# remove .txt or .tsv ending
+genelist=$(echo $genelist | sed 's/.txt$//g' | sed 's/.tsv$//g')
+
 # if input = symbol
 if [ "$input" = "symbol" ]; then
 
 	# annotate biotype and description
-	echo $'\n'"============================================================"$'\n'"(1/3) Finding matches in RefSeq gene names and synonyms..."
-	header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'END$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION
+	echo $'\n'"==================================================================="$'\n'"(1/3) Finding matches in RefSeq gene names and synonyms..."
+	header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'STOP$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION
 	awk -F'\t' -v header="$header" '
 		BEGIN { print header }
 		NR==FNR { 
@@ -97,7 +100,7 @@ if [ "$input" = "symbol" ]; then
 	# merge with annotation list
 	nFindings=$(awk 'END { print NR}' "${genelist}.synonyms.refseq.${build}.txt")
 	if [ "$nFindings" != 0 ]; then
-		header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'END$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION
+		header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'STOP$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION
 		awk -F'\t' -v header="$header" 'BEGIN { print header }
 			NR==FNR { id[$1]=$1"\t"$2"\t"$3"\t"$4"\t"$5"\t"$6"\t"$7"\t"$8; next }
 			FNR==1 { next }
@@ -110,8 +113,8 @@ if [ "$input" = "symbol" ]; then
 elif [ "$input" = "entrez" ]; then
 
 # annotate biotype and desciption
-echo $'\n'"============================================================"$'\n'"(1/3) Finding matches in RefSeq entrez..."
-header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'END$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION
+echo $'\n'"==================================================================="$'\n'"(1/3) Finding matches in RefSeq entrez..."
+header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'STOP$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION
 awk -F'\t' -v header="$header" 'BEGIN { print header }
 	NR==FNR && length($12) != 0 && $9 ~ /GeneID:/ { 
 		synonyms=$14; if(length(synonyms)==0) { synonyms = "NA" };                           
@@ -119,14 +122,14 @@ awk -F'\t' -v header="$header" 'BEGIN { print header }
 		gene[entrez]=$11"\t"$10"\t"$4"\t"$5"\t"synonyms"\t"$12"\t"$13; next }
 	NR==FNR { next }
 	$1 in gene { print $1, gene[$1]; next }
-	{ print $1,"NA","NA","NA","NA","NA","NA","NA"}' OFS='\t' <(gzip -dc "$refseq") "${genelist}.noM.txt" > "${genelist}.refseq.${build}.txt"
+	{ print $1,"NA","NA","NA","NA","NA","NA","NA"}' OFS='\t' <(gzip -dc "$refseq") <(echo "$genelistVar") > "${genelist}.refseq.${build}.txt"
 
 # end  if
 fi
 
 # add HGNC
 echo "(2/3) Adding HGNC identifier..."
-header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'END$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION$'\t'HGNC
+header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'STOP$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION$'\t'HGNC
 awk -F'\t' -v header="$header" 'BEGIN { print header }
 	NR==FNR { info=$9; gsub(/.*HGNC:HGNC:/,"HGNC:",info); gsub(/,.*/,"",info); { if(info ~ /^HGNC:/) { gene[$11]=info } }; next}
 	FNR==1 { next } $2 in gene { print $0, gene[$2]; next }
@@ -135,7 +138,7 @@ awk -F'\t' -v header="$header" 'BEGIN { print header }
 
 # add ENTREZ
 echo "(3/3) Adding ENTREZ identifier..."
-header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'END$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION$'\t'HGNC$'\t'ENTREZ
+header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'STOP$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION$'\t'HGNC$'\t'ENTREZ
 awk -F'\t' -v header="$header" 'BEGIN { print header }
 	NR==FNR { info=$9; gsub(/.*GeneID:/,"GeneID:",info); gsub(/,.*/,"",info); { if(info ~ /^GeneID:/) { gene[$11]=info } }; next }
 	FNR==1 { next } $2 in gene { print $0, gene[$2]; next }
@@ -143,9 +146,14 @@ awk -F'\t' -v header="$header" 'BEGIN { print header }
 \mv "${genelist}.refseq.${build}.tmp.txt" "${genelist}.refseq.${build}.txt"
 
 # summary
-awk -F'\t' 'NR==1 { next } $2!="NA" { count_match++ } $2!="NA" && !seen[$2]++ { count_unique++ } $9!="NA" { count_hgnc++ } $10!="NA" { count_entrez++ }
-	END { print "Input id count:         "NR-1"\nRefSeq matches:         "count_match"\nUnique RefSeq genes:    "count_unique"\nHGNC ids assigned:      "count_hgnc"\nENTREZ ids assigned:    "count_entrez"\n============================================================\n" }' "${genelist}.refseq.${build}.txt"
+awk -F'\t' 'BEGIN { count_match=0; count_unique=0; count_hgnc=0; count_entrez=0 }
+	NR==1 { next }
+	$2!="NA" { count_match++ }
+	$2!="NA" && !seen[$2]++ { count_unique++ }
+	$9!="NA" { count_hgnc++ }
+	$10!="NA" { count_entrez++ }
+	END { print "Input id count:         "NR-1"\nRefSeq matches:         "count_match"\nUnique RefSeq genes:    "count_unique"\nHGNC ids assigned:      "count_hgnc"\nENTREZ ids assigned:    "count_entrez }' "${genelist}.refseq.${build}.txt"
 
 # clean up
 rm -f "${genelist}.synonyms.refseq.${build}.txt"
-
+echo "Output written to ${genelist}.refseq.${build}.txt"$'\n'"==================================================================="$'\n'
