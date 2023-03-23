@@ -14,10 +14,10 @@ cd scripts
 - RefSeq files in GFF3 format (hg19 release 105.20220307, hg38 release 110) will be downloaded automatically from NCBI
 - biotype.sh expects three arguments: genome build [hg19/hg38], type of input [symbol/entrez], and path to input file
 - the input file (mygenes.txt) is expected to contain one gene symbol / entrez id per line
-- the output file will have the same path/name as the input file with ending .refseq.[hg19/hg38].txt
 
 Example for running biotype.sh:
 ```
 printf '%s\n' 'MAPT' 'APOE' 'DRD2' > mygenes.txt
 ./biotype.sh hg19 symbol mygenes.txt
 ```
+- the output file will be located in the same folder as the input file with ending .refseq.[hg19/hg38].txt
