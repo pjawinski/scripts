@@ -134,7 +134,7 @@ fi
 echo "(2/3) Adding HGNC identifier..."
 header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'STOP$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION$'\t'HGNC
 awk -F'\t' -v header="$header" 'BEGIN { print header }
-	NR==FNR { info=$9; gsub(/.*HGNC:HGNC:/,"HGNC:",info); gsub(/,.*/,"",info); { if(info ~ /^HGNC:/) { gene[$11]=info } }; next}
+	NR==FNR { info=$9; gsub(/.*HGNC:HGNC:/,"HGNC:",info); gsub(/,.*/,"",info); gsub(/;.*/,"",info); { if(info ~ /^HGNC:/) { gene[$11]=info } }; next}
 	FNR==1 { next } $2 in gene { print $0, gene[$2]; next }
 	{ print $0, "NA"}' OFS='\t' <(gzip -dc $refseq) "${genelist}.refseq.${build}.txt" > "${genelist}.refseq.${build}.tmp.txt"
 \mv "${genelist}.refseq.${build}.tmp.txt" "${genelist}.refseq.${build}.txt"
@@ -143,7 +143,7 @@ awk -F'\t' -v header="$header" 'BEGIN { print header }
 echo "(3/3) Adding ENTREZ identifier..."
 header=INPUT$'\t'NAME$'\t'CHR$'\t'START$'\t'STOP$'\t'SYNONYMS$'\t'BIOTYPE$'\t'DESCRIPTION$'\t'HGNC$'\t'ENTREZ
 awk -F'\t' -v header="$header" 'BEGIN { print header }
-	NR==FNR { info=$9; gsub(/.*GeneID:/,"GeneID:",info); gsub(/,.*/,"",info); { if(info ~ /^GeneID:/) { gene[$11]=info } }; next }
+	NR==FNR { info=$9; gsub(/.*GeneID:/,"GeneID:",info); gsub(/,.*/,"",info); gsub(/;.*/,"",info); { if(info ~ /^GeneID:/) { gene[$11]=info } }; next }
 	FNR==1 { next } $2 in gene { print $0, gene[$2]; next }
 	{ print $0, "NA"}' OFS='\t' <(gzip -dc $refseq) "${genelist}.refseq.${build}.txt" > "${genelist}.refseq.${build}.tmp.txt"
 \mv "${genelist}.refseq.${build}.tmp.txt" "${genelist}.refseq.${build}.txt"
